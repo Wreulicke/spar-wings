@@ -17,7 +17,6 @@ package jp.xet.sparwings.spring.web.ratelimiter;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.mockito.Mockito.when;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -73,7 +72,6 @@ public class RedisRateLimitServiceTest {
 		
 		sut = new RedisRateLimitService(redisTemplate);
 		sut.setRecoveryStrategy(req -> new RateLimitDescriptor("user1", 2, 1000));
-		when(request.getRemoteAddr()).thenReturn("192.0.2.123");
 	}
 	
 	@After
