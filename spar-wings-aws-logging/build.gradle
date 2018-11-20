@@ -6,5 +6,5 @@ dependencies {
 	compileOnly "javax.servlet:javax.servlet-api"
 	compile "org.springframework:spring-web"
 	compile "org.springframework:spring-context"
-	compile project(":spar-wings-aws-essential")
+	compile "software.amazon.awssdk:regions:$awsJavaSdkVersion"
 }

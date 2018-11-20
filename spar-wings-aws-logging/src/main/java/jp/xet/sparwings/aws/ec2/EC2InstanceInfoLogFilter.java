@@ -32,8 +32,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import org.slf4j.MDC;
 
-import com.amazonaws.util.EC2MetadataUtils;
-import com.amazonaws.util.EC2MetadataUtils.InstanceInfo;
+import software.amazon.awssdk.regions.internal.util.EC2MetadataUtils;
+import software.amazon.awssdk.regions.internal.util.EC2MetadataUtils.InstanceInfo;
 
 /**
  * {@link Filter ServletFilter} implementation that put {@link InstanceInfo} to {@link MDC}.
