@@ -3,7 +3,7 @@
 description "Amazon SNS client wrapper to notify messages to developers or operators."
 
 dependencies {
-	compile "com.amazonaws:aws-java-sdk-sns:$awsJavaSdkVersion"
+	compile "software.amazon.awssdk:sns:$awsJavaSdkVersion"
 	testCompile "org.springframework:spring-context"
 	compile project(":spar-wings-spring-essential")
 	compile project(":spar-wings-aws-essential")

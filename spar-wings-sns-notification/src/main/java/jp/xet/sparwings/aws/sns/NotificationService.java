@@ -31,10 +31,10 @@ import org.springframework.beans.factory.annotation.Value;
 
 import org.slf4j.MDC;
 
-import com.amazonaws.services.sns.AmazonSNS;
-import com.amazonaws.services.sns.model.PublishRequest;
-import com.amazonaws.util.EC2MetadataUtils.InstanceInfo;
-import com.amazonaws.util.json.Jackson;
+import software.amazon.awssdk.core.util.json.JacksonUtils;
+import software.amazon.awssdk.regions.internal.util.EC2MetadataUtils;
+import software.amazon.awssdk.services.sns.SnsClient;
+import software.amazon.awssdk.services.sns.model.PublishRequest;
 
 import jp.xet.sparwings.spring.env.EnvironmentService;
 
@@ -67,18 +67,14 @@ public class NotificationService implements InitializingBean {
 	}
 	
 	
-	private final AmazonSNS sns;
+	private final SnsClient sns;
 	
 	private final String appCodeName;
 	
 	private final EnvironmentService env;
 	
 	@Autowired(required = false)
-	InstanceInfo instanceInfo;
-	
-	@Deprecated
-	@Autowired(required = false)
-	jp.xet.sparwings.aws.ec2.InstanceMetadata instanceMetadata;
+	EC2MetadataUtils.InstanceInfo instanceInfo;
 	
 	@Deprecated
 	@Value("#{systemEnvironment['CFN_STACK_NAME'] ?: systemProperties['CFN_STACK_NAME']}")
@@ -190,11 +186,7 @@ public class NotificationService implements InitializingBean {
 	public void notifyDev(String subject, Map<String, String> messageMap, Throwable t) {
 		messageMap.put("environment", env.toString());
 		if (instanceInfo != null) {
-			messageMap.put("instanceMetadata", Jackson.toJsonString(instanceInfo));
-		} else if (instanceMetadata != null) {
-			@SuppressWarnings("deprecation")
-			String metadataString = instanceMetadata.toString();
-			messageMap.put("instanceMetadata", metadataString);
+			messageMap.put("instanceMetadata", JacksonUtils.toJsonString(instanceInfo));
 		}
 		
 		if (t != null) {
@@ -232,10 +224,10 @@ public class NotificationService implements InitializingBean {
 			return;
 		}
 		try {
-			sns.publish(new PublishRequest()
-				.withTopicArn(topicArn)
-				.withSubject(subject)
-				.withMessage(message));
+			sns.publish(PublishRequest.builder()
+				.topicArn(topicArn)
+				.subject(subject)
+				.message(message).build());
 			log.debug("SNS Notification published: {} - {}", topicArn, subject);
 		} catch (Exception e) { // NOPMD
 			log.error("SNS Publish failed: {} - {} - {}", topicArn, subject, message, e);
