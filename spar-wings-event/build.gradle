@@ -4,7 +4,7 @@ description "Support library to emit event in JSON"
 
 dependencies {
 	compile "org.springframework:spring-context"
-	compile "com.amazonaws:aws-java-sdk-sns:$awsJavaSdkVersion"
+	compile "software.amazon.awssdk:sns:$awsJavaSdkVersion"
 	compile "com.fasterxml.jackson.core:jackson-databind"
 	compile "jp.xet:baseunits:$baseunitsVersion"
 	

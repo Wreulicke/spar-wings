@@ -26,11 +26,12 @@ import org.springframework.context.ApplicationListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.amazonaws.services.sns.AmazonSNS;
-import com.amazonaws.services.sns.model.PublishRequest;
-import com.amazonaws.services.sns.model.PublishResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
+
+import software.amazon.awssdk.services.sns.SnsClient;
+import software.amazon.awssdk.services.sns.model.PublishRequest;
+import software.amazon.awssdk.services.sns.model.PublishResponse;
 
 /**
  * TODO for daisuke
@@ -44,7 +45,7 @@ public class SWEventListener implements ApplicationListener<SWEvent> {
 	private static Logger logger = LoggerFactory.getLogger(SWEventListener.class);
 	
 	@Getter
-	private final AmazonSNS sns;
+	private final SnsClient sns;
 	
 	@Getter
 	private final ObjectMapper objectMapper;
@@ -64,10 +65,11 @@ public class SWEventListener implements ApplicationListener<SWEvent> {
 		}
 		try {
 			String message = objectMapper.writeValueAsString(event);
-			PublishResult publishResult = sns.publish(new PublishRequest()
-				.withTargetArn(eventTopicArn)
-				.withMessage(message));
-			logger.info("SWEvent {} was published: {}", event.getEventType(), publishResult.getMessageId());
+			PublishResponse publishResult = sns.publish(PublishRequest.builder()
+				.targetArn(eventTopicArn)
+				.message(message)
+				.build());
+			logger.info("SWEvent {} was published: {}", event.getEventType(), publishResult.messageId());
 		} catch (Exception e) { // NOPMD
 			if (exceptionHandler != null) {
 				exceptionHandler.accept(e);

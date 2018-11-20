@@ -5,6 +5,6 @@ description "Support library to realize fault injection feature"
 dependencies {
 	compile "org.springframework.boot:spring-boot-starter-aop:$springBootVersion"
 	compile "org.springframework.boot:spring-boot-starter-web:$springBootVersion"
-	compile "com.amazonaws:aws-java-sdk-dynamodb:$awsJavaSdkVersion"
+	compile "com.amazonaws:aws-java-sdk-dynamodb:$awsJavaSdk1Version"
 //	compile "com.google.guava:guava:18.0"
 }
