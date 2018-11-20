@@ -19,22 +19,22 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Scanner;
 
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.AWSCredentialsProviderChain;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.auth.BasicSessionCredentials;
-import com.amazonaws.auth.STSAssumeRoleSessionCredentialsProvider;
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.auth.profile.internal.AbstractProfilesConfigFileScanner;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.profiles.ProfileFile;
+import software.amazon.awssdk.profiles.internal.ProfileFileReader;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 /**
  * TODO for daisuke
@@ -58,7 +58,7 @@ public class AwsCliConfigFileLoader { // NOPMD - cc
 		try (FileInputStream fis = new FileInputStream(file)) {
 			return loadProfiles(fis);
 		} catch (IOException ioe) {
-			throw new AmazonClientException(
+			throw new IllegalStateException(
 					"Unable to load AWS credential profiles file at: " + file.getAbsolutePath(), ioe);
 		}
 	}
@@ -71,9 +71,9 @@ public class AwsCliConfigFileLoader { // NOPMD - cc
 	 * @throws IOException
 	 */
 	private static Map<String, AwsCliProfile> loadProfiles(InputStream is) throws IOException { // NOPMD - cc
-		ProfilesConfigFileLoaderHelper helper = new ProfilesConfigFileLoaderHelper();
-		try (Scanner s = new Scanner(is, "UTF-8")) {
-			Map<String, Map<String, String>> allProfileProperties = helper.parseProfileProperties(s);
+		try (InputStream stream = is) {
+			Map<String, Map<String, String>> allProfileProperties =
+					ProfileFileReader.parseFile(is, ProfileFile.Type.CREDENTIALS);
 			
 			// Convert the loaded property map to credential objects
 			Map<String, AwsCliProfile> profilesByName = new LinkedHashMap<>();
@@ -100,31 +100,37 @@ public class AwsCliConfigFileLoader { // NOPMD - cc
 						"Unable to load credentials into profile: ProfileName is empty.");
 				if (accessKey != null && secretKey != null) {
 					if (sessionToken == null) {
-						AWSCredentialsProvider cp = new AWSStaticCredentialsProvider(
-								new BasicAWSCredentials(accessKey, secretKey));
+						AwsCredentialsProvider cp = StaticCredentialsProvider.create(
+								AwsBasicCredentials.create(accessKey, secretKey));
 						profilesByName.put(profileName, new AwsCliProfile(profileName, cp));
 					} else {
 						if (sessionToken.isEmpty()) {
 							String msg = String.format(Locale.ENGLISH,
 									"Unable to load credentials into profile [%s]: AWS Session Token is empty.",
 									profileName);
-							throw new AmazonClientException(msg);
+							throw new IllegalStateException(msg);
 						}
 						
-						AWSCredentialsProvider cp = new AWSStaticCredentialsProvider(
-								new BasicSessionCredentials(accessKey, secretKey, sessionToken));
+						AwsCredentialsProvider cp = StaticCredentialsProvider.create(
+								AwsSessionCredentials.create(accessKey, secretKey, sessionToken));
 						profilesByName.put(profileName, new AwsCliProfile(profileName, cp));
 					}
 				} else if (roleArn != null && sourceProfile != null) {
 					if (roleSessionName == null) {
 						roleSessionName = "defaultsession";
 					}
-					AWSCredentialsProvider source = new AWSCredentialsProviderChain(
+					AssumeRoleRequest assumeRoleRequest = AssumeRoleRequest.builder()
+						.roleArn(roleArn)
+						.roleSessionName(roleSessionName)
+						.build();
+					AwsCredentialsProvider source = AwsCredentialsProviderChain.of(
 							new AwsCliConfigProfileCredentialsProvider(sourceProfile),
-							new ProfileCredentialsProvider(sourceProfile));
-					AWSCredentialsProvider cp =
-							new STSAssumeRoleSessionCredentialsProvider.Builder(roleArn, roleSessionName)
-								.withLongLivedCredentialsProvider(source)
+							ProfileCredentialsProvider.create(sourceProfile));
+					StsClient stsClient = StsClient.builder().credentialsProvider(source).build();
+					AwsCredentialsProvider cp =
+							StsAssumeRoleCredentialsProvider.builder()
+								.stsClient(stsClient)
+								.refreshRequest(assumeRoleRequest)
 								.build();
 					profilesByName.put(profileName, new AwsCliProfile(profileName, cp));
 				}
@@ -149,75 +155,8 @@ public class AwsCliConfigFileLoader { // NOPMD - cc
 	 */
 	private static void assertParameterNotEmpty(String parameterValue, String errorMessage) {
 		if (parameterValue == null || parameterValue.isEmpty()) {
-			throw new AmazonClientException(errorMessage);
+			throw new IllegalStateException(errorMessage);
 		}
 	}
 	
-	
-	/**
-	 * Implementation of AbstractProfilesConfigFileScanner that groups profile
-	 * properties into a map while scanning through the credentials profile.
-	 */
-	private static class ProfilesConfigFileLoaderHelper extends AbstractProfilesConfigFileScanner {
-		
-		/**
-		 * Map from the parsed profile name to the map of all the property values
-		 * included the specific profile
-		 */
-		protected final Map<String, Map<String, String>> allProfileProperties = new LinkedHashMap<>();
-		
-		
-		/**
-		 * Parses the input and returns a map of all the profile properties.
-		 */
-		public Map<String, Map<String, String>> parseProfileProperties(Scanner scanner) {
-			allProfileProperties.clear();
-			run(scanner);
-			return new LinkedHashMap<>(allProfileProperties);
-		}
-		
-		@Override
-		protected void onEmptyOrCommentLine(String profileName, String line) {
-			// Ignore empty or comment line
-		}
-		
-		@Override
-		protected void onProfileStartingLine(String newProfileName, String line) {
-			// If the same profile name has already been declared, clobber the
-			// previous one
-			allProfileProperties.put(newProfileName, new HashMap<String, String>());
-		}
-		
-		@Override
-		protected void onProfileEndingLine(String prevProfileName) {
-			// No-op
-		}
-		
-		@Override
-		protected void onProfileProperty(String profileName,
-				String propertyKey, String propertyValue,
-				boolean isSupportedProperty, String line) {
-			
-			// Not strictly necessary, since the abstract super class guarantees
-			// onProfileStartingLine is always invoked before this method.
-			// Just to be safe...
-			if (allProfileProperties.get(profileName) == null) {
-				allProfileProperties.put(profileName, new HashMap<String, String>());
-			}
-			
-			Map<String, String> properties = allProfileProperties.get(profileName);
-			
-			if (properties.containsKey(propertyKey)) {
-				throw new IllegalArgumentException(
-						"Duplicate property values for [" + propertyKey + "].");
-			}
-			
-			properties.put(propertyKey, propertyValue);
-		}
-		
-		@Override
-		protected void onEndOfFile() {
-			// No-op
-		}
-	}
 }

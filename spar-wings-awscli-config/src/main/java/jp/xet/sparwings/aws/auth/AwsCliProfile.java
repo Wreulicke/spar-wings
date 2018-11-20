@@ -19,7 +19,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 /**
  * TODO for daisuke
@@ -53,5 +53,5 @@ public class AwsCliProfile {
 	
 	/** Holds the AWS Credentials for the profile. */
 	@Getter
-	private final AWSCredentialsProvider awsCredentialsProvider;
+	private final AwsCredentialsProvider awsCredentialsProvider;
 }

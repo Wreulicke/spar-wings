@@ -17,19 +17,19 @@ package jp.xet.sparwings.aws.auth;
 
 import java.util.concurrent.Semaphore;
 
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.profile.internal.AwsProfileNameLoader;
-import com.amazonaws.util.StringUtils;
+import software.amazon.awssdk.auth.credentials.AwsCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.profiles.ProfileFileSystemSetting;
+import software.amazon.awssdk.utils.StringUtils;
 
 /**
  * TODO for daisuke
- * 
+ *
  * @since 0.10
  * @version $Id$
  * @author daisuke
  */
-public class AwsCliConfigProfileCredentialsProvider implements AWSCredentialsProvider {
+public class AwsCliConfigProfileCredentialsProvider implements AwsCredentialsProvider {
 	
 	/**
 	 * Default refresh interval
@@ -82,7 +82,7 @@ public class AwsCliConfigProfileCredentialsProvider implements AWSCredentialsPro
 	
 	/**
 	 * インスタンスを生成する。
-	 * 
+	 *
 	 * @param profileName
 	 */
 	public AwsCliConfigProfileCredentialsProvider(String profileName) {
@@ -91,9 +91,8 @@ public class AwsCliConfigProfileCredentialsProvider implements AWSCredentialsPro
 	
 	/**
 	 * インスタンスを生成する。
-	 * 
+	 *
 	 * @param cliConfigFilePath
-	 * @param profilesConfigFilePath
 	 * @param profileName
 	 */
 	public AwsCliConfigProfileCredentialsProvider(String cliConfigFilePath, String profileName) {
@@ -102,9 +101,8 @@ public class AwsCliConfigProfileCredentialsProvider implements AWSCredentialsPro
 	
 	/**
 	 * インスタンスを生成する。
-	 * 
+	 *
 	 * @param cliConfigFile
-	 * @param profilesConfigFile
 	 * @param profileName
 	 */
 	public AwsCliConfigProfileCredentialsProvider(AwsCliConfigFile cliConfigFile,
@@ -114,17 +112,17 @@ public class AwsCliConfigProfileCredentialsProvider implements AWSCredentialsPro
 			lastRefreshed = System.nanoTime();
 		}
 		if (profileName == null) {
-			String profileEnvVarOverride = System.getenv(AwsProfileNameLoader.AWS_PROFILE_ENVIRONMENT_VARIABLE);
+			String profileEnvVarOverride = System.getenv(ProfileFileSystemSetting.AWS_PROFILE.environmentVariable());
 			profileEnvVarOverride = StringUtils.trim(profileEnvVarOverride);
-			if (!StringUtils.isNullOrEmpty(profileEnvVarOverride)) {
+			if (!StringUtils.isEmpty(profileEnvVarOverride)) {
 				this.profileName = profileEnvVarOverride;
 			} else {
-				String profileSysPropOverride = System.getProperty(AwsProfileNameLoader.AWS_PROFILE_SYSTEM_PROPERTY);
+				String profileSysPropOverride = System.getProperty(ProfileFileSystemSetting.AWS_PROFILE.property());
 				profileSysPropOverride = StringUtils.trim(profileSysPropOverride);
-				if (!StringUtils.isNullOrEmpty(profileSysPropOverride)) {
+				if (!StringUtils.isEmpty(profileSysPropOverride)) {
 					this.profileName = profileSysPropOverride;
 				} else {
-					this.profileName = AwsProfileNameLoader.DEFAULT_PROFILE_NAME;
+					this.profileName = ProfileFileSystemSetting.AWS_PROFILE.defaultValue();
 				}
 			}
 		} else {
@@ -132,8 +130,13 @@ public class AwsCliConfigProfileCredentialsProvider implements AWSCredentialsPro
 		}
 	}
 	
+	public void refresh() {
+		cliConfigFile.refresh();
+		lastRefreshed = System.nanoTime();
+	}
+	
 	@Override
-	public AWSCredentials getCredentials() {
+	public AwsCredentials resolveCredentials() {
 		if (cliConfigFile == null) {
 			cliConfigFile = new AwsCliConfigFile();
 			lastRefreshed = System.nanoTime();
@@ -159,16 +162,10 @@ public class AwsCliConfigProfileCredentialsProvider implements AWSCredentialsPro
 			}
 		}
 		
-		AWSCredentialsProvider cp = cliConfigFile.getCredentialsProvider(profileName);
+		AwsCredentialsProvider cp = cliConfigFile.getCredentialsProvider(profileName);
 		if (cp != null) {
-			return cp.getCredentials();
+			return cp.resolveCredentials();
 		}
 		return null;
-	}
-	
-	@Override
-	public void refresh() {
-		cliConfigFile.refresh();
-		lastRefreshed = System.nanoTime();
 	}
 }

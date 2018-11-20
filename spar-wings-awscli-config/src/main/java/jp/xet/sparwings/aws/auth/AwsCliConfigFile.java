@@ -21,8 +21,7 @@ import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
 
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.auth.AWSCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 /**
  * TODO for daisuke
@@ -61,7 +60,7 @@ public class AwsCliConfigFile {
 	 * (~/.aws/credentials) or from an alternate location if
 	 * <code>AWS_CREDENTIAL_PROFILES_FILE</code> is set.
 	 */
-	public AwsCliConfigFile() throws AmazonClientException {
+	public AwsCliConfigFile() {
 		this(getCredentialProfilesFile());
 	}
 	
@@ -84,7 +83,7 @@ public class AwsCliConfigFile {
 	 * Loads the AWS credential profiles from the file. The reference to the
 	 * file is specified as a parameter to the constructor.
 	 */
-	public AwsCliConfigFile(File file) throws AmazonClientException {
+	public AwsCliConfigFile(File file) {
 		profileFile = file;
 		profileFileLastModified = file.lastModified();
 		profilesByName = loadProfiles(profileFile);
@@ -93,7 +92,7 @@ public class AwsCliConfigFile {
 	/**
 	 * Returns the AWS credentials for the specified profile.
 	 */
-	public AWSCredentialsProvider getCredentialsProvider(String profile) {
+	public AwsCredentialsProvider getCredentialsProvider(String profile) {
 		AwsCliProfile p = profilesByName.get(profile);
 		if (p == null) {
 			throw new IllegalArgumentException("No AWS profile named '" + profile + "'");
@@ -128,7 +127,7 @@ public class AwsCliConfigFile {
 		
 		String userHome = System.getProperty("user.home");
 		if (userHome == null) {
-			throw new AmazonClientException("Unable to load AWS profiles: "
+			throw new IllegalStateException("Unable to load AWS profiles: "
 					+ "'user.home' System property is not set.");
 		}
 		
