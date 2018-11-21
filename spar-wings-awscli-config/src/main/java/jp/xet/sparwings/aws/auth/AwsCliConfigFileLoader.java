@@ -32,6 +32,7 @@ import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.profiles.ProfileFile;
 import software.amazon.awssdk.profiles.internal.ProfileFileReader;
+import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -124,7 +125,10 @@ public class AwsCliConfigFileLoader { // NOPMD - cc
 				AwsCredentialsProvider source = AwsCredentialsProviderChain.of(
 						new AwsCliConfigProfileCredentialsProvider(sourceProfile),
 						ProfileCredentialsProvider.create(sourceProfile));
-				StsClient stsClient = StsClient.builder().credentialsProvider(source).build();
+				StsClient stsClient = StsClient.builder()
+					.credentialsProvider(source)
+					.region(new DefaultAwsRegionProviderChain().getRegion())
+					.build();
 				AwsCredentialsProvider cp =
 						StsAssumeRoleCredentialsProvider.builder()
 							.stsClient(stsClient)
