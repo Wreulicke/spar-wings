@@ -71,72 +71,70 @@ public class AwsCliConfigFileLoader { // NOPMD - cc
 	 * @throws IOException
 	 */
 	private static Map<String, AwsCliProfile> loadProfiles(InputStream is) throws IOException { // NOPMD - cc
-		try (InputStream stream = is) {
-			Map<String, Map<String, String>> allProfileProperties =
-					ProfileFileReader.parseFile(is, ProfileFile.Type.CREDENTIALS);
+		Map<String, Map<String, String>> allProfileProperties =
+				ProfileFileReader.parseFile(is, ProfileFile.Type.CREDENTIALS);
+		
+		// Convert the loaded property map to credential objects
+		Map<String, AwsCliProfile> profilesByName = new LinkedHashMap<>();
+		
+		for (Entry<String, Map<String, String>> entry : allProfileProperties.entrySet()) {
+			String profileName = entry.getKey();
+			Map<String, String> properties = entry.getValue();
 			
-			// Convert the loaded property map to credential objects
-			Map<String, AwsCliProfile> profilesByName = new LinkedHashMap<>();
-			
-			for (Entry<String, Map<String, String>> entry : allProfileProperties.entrySet()) {
-				String profileName = entry.getKey();
-				Map<String, String> properties = entry.getValue();
-				
-				if (profileName.equals(AwsCliConfigFile.DEFAULT_PROFILE_NAME) == false) {
-					if (profileName.startsWith("profile ")) {
-						profileName = profileName.substring("profile ".length());
-					}
-				}
-				
-				String accessKey = properties.get(AwsCliProfile.AWS_ACCESS_KEY_ID);
-				String secretKey = properties.get(AwsCliProfile.AWS_SECRET_ACCESS_KEY);
-				String sessionToken = properties.get(AwsCliProfile.AWS_SESSION_TOKEN);
-				String roleArn = properties.get(AwsCliProfile.AWS_ROLE_ARN);
-				String sourceProfile = properties.get(AwsCliProfile.AWS_SOURCE_PROFILE);
-				String roleSessionName = properties.get(AwsCliProfile.AWS_ROLE_SESSION_NAME);
-				
-				assertParameterNotEmpty(profileName,
-						"Unable to load credentials into profile: ProfileName is empty.");
-				if (accessKey != null && secretKey != null) {
-					if (sessionToken == null) {
-						AwsCredentialsProvider cp = StaticCredentialsProvider.create(
-								AwsBasicCredentials.create(accessKey, secretKey));
-						profilesByName.put(profileName, new AwsCliProfile(profileName, cp));
-					} else {
-						if (sessionToken.isEmpty()) {
-							String msg = String.format(Locale.ENGLISH,
-									"Unable to load credentials into profile [%s]: AWS Session Token is empty.",
-									profileName);
-							throw new IllegalStateException(msg);
-						}
-						
-						AwsCredentialsProvider cp = StaticCredentialsProvider.create(
-								AwsSessionCredentials.create(accessKey, secretKey, sessionToken));
-						profilesByName.put(profileName, new AwsCliProfile(profileName, cp));
-					}
-				} else if (roleArn != null && sourceProfile != null) {
-					if (roleSessionName == null) {
-						roleSessionName = "defaultsession";
-					}
-					AssumeRoleRequest assumeRoleRequest = AssumeRoleRequest.builder()
-						.roleArn(roleArn)
-						.roleSessionName(roleSessionName)
-						.build();
-					AwsCredentialsProvider source = AwsCredentialsProviderChain.of(
-							new AwsCliConfigProfileCredentialsProvider(sourceProfile),
-							ProfileCredentialsProvider.create(sourceProfile));
-					StsClient stsClient = StsClient.builder().credentialsProvider(source).build();
-					AwsCredentialsProvider cp =
-							StsAssumeRoleCredentialsProvider.builder()
-								.stsClient(stsClient)
-								.refreshRequest(assumeRoleRequest)
-								.build();
-					profilesByName.put(profileName, new AwsCliProfile(profileName, cp));
+			if (profileName.equals(AwsCliConfigFile.DEFAULT_PROFILE_NAME) == false) {
+				if (profileName.startsWith("profile ")) {
+					profileName = profileName.substring("profile ".length());
 				}
 			}
 			
-			return profilesByName;
+			String accessKey = properties.get(AwsCliProfile.AWS_ACCESS_KEY_ID);
+			String secretKey = properties.get(AwsCliProfile.AWS_SECRET_ACCESS_KEY);
+			String sessionToken = properties.get(AwsCliProfile.AWS_SESSION_TOKEN);
+			String roleArn = properties.get(AwsCliProfile.AWS_ROLE_ARN);
+			String sourceProfile = properties.get(AwsCliProfile.AWS_SOURCE_PROFILE);
+			String roleSessionName = properties.get(AwsCliProfile.AWS_ROLE_SESSION_NAME);
+			
+			assertParameterNotEmpty(profileName,
+					"Unable to load credentials into profile: ProfileName is empty.");
+			if (accessKey != null && secretKey != null) {
+				if (sessionToken == null) {
+					AwsCredentialsProvider cp = StaticCredentialsProvider.create(
+							AwsBasicCredentials.create(accessKey, secretKey));
+					profilesByName.put(profileName, new AwsCliProfile(profileName, cp));
+				} else {
+					if (sessionToken.isEmpty()) {
+						String msg = String.format(Locale.ENGLISH,
+								"Unable to load credentials into profile [%s]: AWS Session Token is empty.",
+								profileName);
+						throw new IllegalStateException(msg);
+					}
+					
+					AwsCredentialsProvider cp = StaticCredentialsProvider.create(
+							AwsSessionCredentials.create(accessKey, secretKey, sessionToken));
+					profilesByName.put(profileName, new AwsCliProfile(profileName, cp));
+				}
+			} else if (roleArn != null && sourceProfile != null) {
+				if (roleSessionName == null) {
+					roleSessionName = "defaultsession";
+				}
+				AssumeRoleRequest assumeRoleRequest = AssumeRoleRequest.builder()
+					.roleArn(roleArn)
+					.roleSessionName(roleSessionName)
+					.build();
+				AwsCredentialsProvider source = AwsCredentialsProviderChain.of(
+						new AwsCliConfigProfileCredentialsProvider(sourceProfile),
+						ProfileCredentialsProvider.create(sourceProfile));
+				StsClient stsClient = StsClient.builder().credentialsProvider(source).build();
+				AwsCredentialsProvider cp =
+						StsAssumeRoleCredentialsProvider.builder()
+							.stsClient(stsClient)
+							.refreshRequest(assumeRoleRequest)
+							.build();
+				profilesByName.put(profileName, new AwsCliProfile(profileName, cp));
+			}
 		}
+		
+		return profilesByName;
 	}
 	
 	/**
