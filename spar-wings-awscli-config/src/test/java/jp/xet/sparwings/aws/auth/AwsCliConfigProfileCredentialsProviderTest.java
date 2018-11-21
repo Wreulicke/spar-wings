@@ -30,8 +30,8 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 /**
  * TODO for daisuke
@@ -50,7 +50,7 @@ public class AwsCliConfigProfileCredentialsProviderTest {
 	AwsCliConfigFile configFile;
 	
 	@Mock
-	AWSCredentialsProvider cp;
+	AwsCredentialsProvider cp;
 	
 	AwsCliConfigProfileCredentialsProvider sut;
 	
@@ -64,10 +64,10 @@ public class AwsCliConfigProfileCredentialsProviderTest {
 	@Test
 	public void test() {
 		// setup
-		AWSCredentials expectedAwsCredentials = mock(AWSCredentials.class);
-		when(cp.getCredentials()).thenReturn(expectedAwsCredentials);
+		AwsCredentials expectedAwsCredentials = mock(AwsCredentials.class);
+		when(cp.resolveCredentials()).thenReturn(expectedAwsCredentials);
 		// exercise
-		AWSCredentials actual = sut.getCredentials();
+		AwsCredentials actual = sut.resolveCredentials();
 		// verify
 		assertThat(actual, is(expectedAwsCredentials));
 		logger.info("{}", actual);

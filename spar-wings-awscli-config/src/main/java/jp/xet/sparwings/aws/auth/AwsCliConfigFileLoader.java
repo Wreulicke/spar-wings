@@ -83,10 +83,9 @@ public class AwsCliConfigFileLoader { // NOPMD - cc
 				Map<String, String> properties = entry.getValue();
 				
 				if (profileName.equals(AwsCliConfigFile.DEFAULT_PROFILE_NAME) == false) {
-					if (profileName.startsWith("profile ") == false) {
-						continue;
+					if (profileName.startsWith("profile ")) {
+						profileName = profileName.substring("profile ".length());
 					}
-					profileName = profileName.substring("profile ".length());
 				}
 				
 				String accessKey = properties.get(AwsCliProfile.AWS_ACCESS_KEY_ID);

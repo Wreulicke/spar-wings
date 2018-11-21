@@ -28,9 +28,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.STSAssumeRoleSessionCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 
 /**
  * Test for {@link AwsCliConfigFile}.
@@ -62,18 +62,18 @@ public class AwsCliConfigFileTest {
 	@Test
 	public void testSrcProfiles() {
 		// exercise
-		AWSCredentialsProvider actual = sut.getCredentialsProvider("src");
+		AwsCredentialsProvider actual = sut.getCredentialsProvider("src");
 		// verify
-		assertThat(actual, is(instanceOf(AWSStaticCredentialsProvider.class)));
+		assertThat(actual, is(instanceOf(StaticCredentialsProvider.class)));
 		
 	}
 	
 	@Test
 	public void testTestProfiles() {
 		// exercise
-		AWSCredentialsProvider actual = sut.getCredentialsProvider("test");
+		AwsCredentialsProvider actual = sut.getCredentialsProvider("test");
 		// verify
-		assertThat(actual, is(instanceOf(STSAssumeRoleSessionCredentialsProvider.class)));
+		assertThat(actual, is(instanceOf(StsAssumeRoleCredentialsProvider.class)));
 		
 	}
 }
