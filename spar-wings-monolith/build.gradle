@@ -7,8 +7,7 @@ dependencies {
 	compile "com.googlecode.htmlcompressor:htmlcompressor:1.5.2"
 	
 	compile "com.amazonaws:aws-java-sdk-dynamodb:$awsJavaSdk1Version"
-	compile "com.amazonaws:aws-java-sdk-sns:$awsJavaSdk1Version"
-	
+
 	compile "org.springframework:spring-web"
 	compile "org.springframework:spring-webmvc"
 	compile "org.springframework.security:spring-security-core"

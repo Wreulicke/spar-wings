@@ -4,5 +4,5 @@ description "Support library for Thymeleaf to retrieve template from S3 bucket."
 
 dependencies {
 	compile "software.amazon.awssdk:s3:$awsJavaSdkVersion"
-	compile "org.thymeleaf:thymeleaf"
+	compile "org.thymeleaf:thymeleaf:2.1.4.RELEASE"
 }

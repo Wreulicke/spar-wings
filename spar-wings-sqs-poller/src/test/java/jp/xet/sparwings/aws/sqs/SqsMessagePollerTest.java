@@ -44,12 +44,12 @@ import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 
-import com.amazonaws.services.sqs.AmazonSQS;
-import com.amazonaws.services.sqs.model.ChangeMessageVisibilityRequest;
-import com.amazonaws.services.sqs.model.DeleteMessageRequest;
-import com.amazonaws.services.sqs.model.Message;
-import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
-import com.amazonaws.services.sqs.model.ReceiveMessageResult;
+import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityRequest;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
+import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 
 /**
  * Test for {@link SqsMessagePoller}.
@@ -67,7 +67,7 @@ public class SqsMessagePollerTest {
 	private static final String Q_URL = "http://example.com";
 	
 	@Mock
-	AmazonSQS sqs;
+	SqsClient sqs;
 	
 	@Spy
 	RetryTemplate retry = new RetryTemplate(); // retry 3 times
@@ -85,23 +85,25 @@ public class SqsMessagePollerTest {
 		sut.setChangeVisibilityThreshold(1);
 	}
 	
-	private ReceiveMessageResult receiveMessageResultOf(Message... msgs) {
-		return new ReceiveMessageResult().withMessages(msgs);
+	private ReceiveMessageResponse receiveMessageResultOf(Message... msgs) {
+		return ReceiveMessageResponse.builder().messages(msgs).build();
 	}
 	
 	private Message createMessage(int i) {
 		String body = "body-" + i;
-		return new Message()
-			.withMessageId("mid-" + i)
-			.withBody(body)
-			.withReceiptHandle("rh-" + i)
-			.withMD5OfBody(DigestUtils.md5DigestAsHex(body.getBytes()));
+		return Message.builder()
+			.messageId("mid-" + i)
+			.body(body)
+			.receiptHandle("rh-" + i)
+			.md5OfBody(DigestUtils.md5DigestAsHex(body.getBytes()))
+			.build();
 	}
 	
 	private DeleteMessageRequest createDeleteMessageRequest(int i) {
-		return new DeleteMessageRequest()
-			.withQueueUrl(Q_URL)
-			.withReceiptHandle("rh-" + i);
+		return DeleteMessageRequest.builder()
+			.queueUrl(Q_URL)
+			.receiptHandle("rh-" + i)
+			.build();
 	}
 	
 	private Answer<?> createHeavyJobAnswer(int size, boolean excepiton) {
@@ -188,9 +190,9 @@ public class SqsMessagePollerTest {
 				ArgumentCaptor.forClass(ChangeMessageVisibilityRequest.class);
 		verify(sqs, times(1)).changeMessageVisibility(captor.capture());
 		ChangeMessageVisibilityRequest cmvReq = captor.getValue();
-		assertThat(cmvReq.getQueueUrl(), is(Q_URL));
-		assertThat(cmvReq.getReceiptHandle(), is("rh-1"));
-		assertThat(cmvReq.getVisibilityTimeout(), is(10));
+		assertThat(cmvReq.queueUrl(), is(Q_URL));
+		assertThat(cmvReq.receiptHandle(), is("rh-1"));
+		assertThat(cmvReq.visibilityTimeout(), is(10));
 	}
 	
 	@Test
@@ -221,21 +223,21 @@ public class SqsMessagePollerTest {
 		verify(sqs, times(3)).changeMessageVisibility(captor.capture());
 		
 		ChangeMessageVisibilityRequest cmvReq1 = captor.getAllValues().stream()
-			.filter(r -> r.getReceiptHandle().equals("rh-1")).findFirst().get();
-		assertThat(cmvReq1.getQueueUrl(), is(Q_URL));
-		assertThat(cmvReq1.getVisibilityTimeout(), is(10));
+			.filter(r -> r.receiptHandle().equals("rh-1")).findFirst().get();
+		assertThat(cmvReq1.queueUrl(), is(Q_URL));
+		assertThat(cmvReq1.visibilityTimeout(), is(10));
 		
 		ChangeMessageVisibilityRequest cmvReq2 = captor.getAllValues().stream()
-			.filter(r -> r.getReceiptHandle().equals("rh-2")).findFirst().get();
-		assertThat(cmvReq2.getQueueUrl(), is(Q_URL));
-		assertThat(cmvReq2.getReceiptHandle(), is("rh-2"));
-		assertThat(cmvReq2.getVisibilityTimeout(), is(10));
+			.filter(r -> r.receiptHandle().equals("rh-2")).findFirst().get();
+		assertThat(cmvReq2.queueUrl(), is(Q_URL));
+		assertThat(cmvReq2.receiptHandle(), is("rh-2"));
+		assertThat(cmvReq2.visibilityTimeout(), is(10));
 		
 		ChangeMessageVisibilityRequest cmvReq3 = captor.getAllValues().stream()
-			.filter(r -> r.getReceiptHandle().equals("rh-3")).findFirst().get();
-		assertThat(cmvReq3.getQueueUrl(), is(Q_URL));
-		assertThat(cmvReq3.getReceiptHandle(), is("rh-3"));
-		assertThat(cmvReq3.getVisibilityTimeout(), is(10));
+			.filter(r -> r.receiptHandle().equals("rh-3")).findFirst().get();
+		assertThat(cmvReq3.queueUrl(), is(Q_URL));
+		assertThat(cmvReq3.receiptHandle(), is("rh-3"));
+		assertThat(cmvReq3.visibilityTimeout(), is(10));
 	}
 	
 	@Test
@@ -257,14 +259,14 @@ public class SqsMessagePollerTest {
 		verify(sqs, times(2)).changeMessageVisibility(captor.capture());
 		
 		ChangeMessageVisibilityRequest cmvReq1 = captor.getAllValues().get(0);
-		assertThat(cmvReq1.getQueueUrl(), is(Q_URL));
-		assertThat(cmvReq1.getReceiptHandle(), is("rh-1"));
-		assertThat(cmvReq1.getVisibilityTimeout(), is(10));
+		assertThat(cmvReq1.queueUrl(), is(Q_URL));
+		assertThat(cmvReq1.receiptHandle(), is("rh-1"));
+		assertThat(cmvReq1.visibilityTimeout(), is(10));
 		
 		ChangeMessageVisibilityRequest cmvReq2 = captor.getAllValues().get(1);
-		assertThat(cmvReq2.getQueueUrl(), is(Q_URL));
-		assertThat(cmvReq2.getReceiptHandle(), is("rh-1"));
-		assertThat(cmvReq2.getVisibilityTimeout(), is(10));
+		assertThat(cmvReq2.queueUrl(), is(Q_URL));
+		assertThat(cmvReq2.receiptHandle(), is("rh-1"));
+		assertThat(cmvReq2.visibilityTimeout(), is(10));
 	}
 	
 	@Test
