@@ -25,9 +25,9 @@ import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 
 import org.junit.Test;
 
-import com.amazonaws.services.sns.AmazonSNS;
-
 import jp.xet.sparwings.spring.env.EnvironmentService;
+
+import software.amazon.awssdk.services.sns.SnsClient;
 
 public class NotificationServiceTest {
 	
@@ -54,7 +54,7 @@ public class NotificationServiceTest {
 		
 		@Bean
 		public NotificationService notificationService() {
-			return new NotificationService(mock(AmazonSNS.class), "sample-app", mock(EnvironmentService.class));
+			return new NotificationService(mock(SnsClient.class), "sample-app", mock(EnvironmentService.class));
 		}
 	}
 }
