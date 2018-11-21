@@ -16,7 +16,6 @@
 package jp.xet.sparwings.thymeleaf.s3;
 
 import java.io.InputStream;
-import java.util.Objects;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,8 +23,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.thymeleaf.TemplateProcessingParameters;
 import org.thymeleaf.resourceresolver.IResourceResolver;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.AmazonS3Exception;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
  * {@link IResourceResolver} implementation to get S3 object resource.
@@ -38,7 +39,7 @@ import com.amazonaws.services.s3.model.AmazonS3Exception;
 @RequiredArgsConstructor
 public class S3TemplateResourceResolver implements IResourceResolver {
 	
-	private final AmazonS3 s3;
+	private final S3Client s3;
 	
 	private final String bucketName;
 	
@@ -52,13 +53,14 @@ public class S3TemplateResourceResolver implements IResourceResolver {
 	public InputStream getResourceAsStream(TemplateProcessingParameters templateProcessingParameters,
 			String resourceName) {
 		try {
-			return s3.getObject(bucketName, resourceName).getObjectContent();
-		} catch (AmazonS3Exception e) {
-			if (Objects.equals(e.getErrorCode(), "NoSuchKey")) {
-				log.trace(e.getMessage());
-			} else {
-				log.warn(e.getMessage());
-			}
+			return s3.getObject(GetObjectRequest.builder()
+				.bucket(bucketName)
+				.key(resourceName)
+				.build());
+		} catch (NoSuchKeyException e) {
+			log.trace(e.getMessage(), e);
+		} catch (S3Exception e) {
+			log.warn(e.getMessage());
 		} catch (Exception e) { // NOPMD
 			log.warn("Unexpected", e);
 		}

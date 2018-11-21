@@ -18,7 +18,7 @@ package jp.xet.sparwings.thymeleaf.s3;
 import org.thymeleaf.TemplateProcessingParameters;
 import org.thymeleaf.templateresolver.TemplateResolver;
 
-import com.amazonaws.services.s3.AmazonS3;
+import software.amazon.awssdk.services.s3.S3Client;
 
 /**
  * TODO for daisuke
@@ -46,7 +46,7 @@ public class S3TemplateResolver extends TemplateResolver {
 	 * @param bucketName The bucket name for template
 	 * @since 0.12
 	 */
-	public S3TemplateResolver(AmazonS3 s3, String bucketName) {
+	public S3TemplateResolver(S3Client s3, String bucketName) {
 		this(new S3TemplateResourceResolver(s3, bucketName));
 	}
 	
